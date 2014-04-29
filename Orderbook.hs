@@ -6,7 +6,7 @@ import Test.Hspec
 type Events = [PlaceResult]
 
 data PlaceResult = Accepted                   
-                 | Rejected String
+                 | Rejected
                  | Fill Price Quantity
                  deriving (Show, Eq)
               
@@ -22,8 +22,12 @@ type Orderbook = [Order]
 emptyOrderbook :: Orderbook
 emptyOrderbook = []
 
+validOrder (Order p q) = and [q /= 0, p /= 0]
+
 placeOrder :: Order -> Orderbook -> (Orderbook, Events)
-placeOrder o ob = ([o], [Accepted])
+placeOrder o ob 
+  | validOrder o = ([o], [Accepted])
+  | otherwise = ([], [Rejected])
 
 (>!>) :: (Orderbook, Events) -> (Orderbook -> (Orderbook, Events)) -> (Orderbook, Events)
 (>!>) tuple f = f $ fst tuple
@@ -37,13 +41,20 @@ opposite (Order p q) = Order p (-q)
 fullFillOf :: Order -> PlaceResult
 fullFillOf (Order p q) = Fill p q
 
+quantityZero :: Order -> Bool
+quantityZero (Order p q) = (q == 0)
+
 main = hspec $ do
   describe "Orderbooks" $ do
-    it "always accepts an order if it is empty" $ property $ \o ->
-      (snd $ placeOrder o emptyOrderbook) == [Accepted]
+    it "rejects orders with zero quantity" $ do
+      placeOrder (Order 23 0) emptyOrderbook `shouldBe` ([], [Rejected])
+    it "rejects orders with zero price" $ do
+      placeOrder (Order 0 23) emptyOrderbook `shouldBe` ([], [Rejected])
+    it "always accepts valid orders if it is empty" $ property $ \o ->
+      (validOrder o) ==> (snd $ placeOrder o emptyOrderbook) == [Accepted]
     it "consists of the only order in them after a single place" $ property $ \o ->
-      (fst $ placeOrder o emptyOrderbook) == [o]
+      (validOrder o) ==> (fst $ placeOrder o emptyOrderbook) == [o]
     it "fills both sides of equal and opposite orders when placed consecutively" $ property $ \o ->
-      placeOrder o emptyOrderbook >!> (placeOrder $ opposite o) == ([], [fullFillOf o, fullFillOf $ opposite o])
+      (validOrder o) ==> placeOrder o emptyOrderbook >!> (placeOrder $ opposite o) == ([], [fullFillOf o, fullFillOf $ opposite o])
       
       
