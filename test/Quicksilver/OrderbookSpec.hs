@@ -46,4 +46,6 @@ runTests = hspec $ do
       (buyOrder o) ==> placeOrder o emptyOrderbook >!> (placeOrder $ opposite o) == (([],[]), [fullFillOf $ opposite o, fullFillOf o])
     it "accepts the same order twice, leaving it on the book" $ property $ \o ->
       (buyOrder o) ==> placeOrder o emptyOrderbook >!> placeOrder o == (([o,o],[]), [Accepted])
+    it "places opposite orders that don't match on opposite sides of the book" $ property $ \(Order p q) ->
+      and[p > 1, q > 0] ==> placeOrder (Order p q) emptyOrderbook >!> placeOrder (Order (p+1) (-q)) == (([Order p q],[Order (p+1) (-q)]), [Accepted])
 

@@ -63,4 +63,6 @@ placeOrder o ob
         
 walkBook :: [Order] -> [Order] -> Order -> Reconstitute -> (Orderbook, Events)
 walkBook [] accSide o r = (r [] (o:accSide), [Accepted])
-walkBook ((Order p q):tail) accSide o r = (r tail [], [Fill p (-q), Fill p q])
+walkBook ((Order p1 q1):tail) accSide (Order p2 q2) r 
+  | p1 == p2 = (r tail [], [Fill p1 (-q1), Fill p1 q1])
+  | otherwise = (r [Order p1 q1] [Order p2 q2], [Accepted])
