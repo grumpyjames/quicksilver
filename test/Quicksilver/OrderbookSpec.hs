@@ -50,5 +50,7 @@ runTests = hspec $ do
       and[p > 0, q > 0] ==> placeOrder (Order p q) emptyOrderbook >!> placeOrder (Order (p+1) (-q)) == (([Order p q],[Order (p+1) (-q)]), [Accepted])
     it "matches a buy order with a sell order with a lower price, the aggressing order taking the best price" $ property $ \(Order p q) ->
       and[p > 1, q > 0] ==> placeOrder (Order p q) emptyOrderbook >!> placeOrder (Order (p-1) (-q)) == (([],[]), [Fill p (-q), Fill p q])
+    it "matches only half of a double reversed order, leaving the remainder on the book" $ property $ \(Order p q) ->
+      and[p > 0, q > 0] ==> placeOrder (Order p q) emptyOrderbook >!> placeOrder (Order p ((-2)*q)) == (([], [Order p (-q)]), [Fill p (-q), Fill p q])
 
 

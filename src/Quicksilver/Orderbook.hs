@@ -65,10 +65,13 @@ placeOrder o ob
         accSide = sideToAcc orderSide ob
         reassemble = rebuild orderSide
         match = matches orderSide
-        orderSide = side o
+        orderSide = side o        
         
 walkBook :: [Order] -> [Order] -> Order -> Match -> Reconstitute -> (Orderbook, Events)
 walkBook [] accSide o _ r = (r [] (o:accSide), [Accepted])
-walkBook ((Order p1 q1):tail) accSide (Order p2 q2) m r 
-  | m p2 p1 = (r tail [], [Fill p1 (-q1), Fill p1 q1])
+walkBook ((Order p1 q1):[]) accSide (Order p2 q2) m r 
+  | m p2 p1 = (r [] (remainder p2 q1 q2), [Fill p1 (-q1), Fill p1 q1])
   | otherwise = (r [Order p1 q1] [Order p2 q2], [Accepted])
+  where remainder p q1 q2 
+          | q1 + q2 == 0 = []
+          | otherwise = [Order p (q1+q2)]
