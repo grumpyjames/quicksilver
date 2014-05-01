@@ -24,7 +24,7 @@ type Orderbook = [Order]
 emptyOrderbook :: Orderbook
 emptyOrderbook = []
 
-validOrder (Order p q) = and [q /= 0, p /= 0]
+validOrder (Order p q) = and [q /= 0, p > 0]
 
 placeOrder :: Order -> Orderbook -> (Orderbook, Events)
 placeOrder o ob 
