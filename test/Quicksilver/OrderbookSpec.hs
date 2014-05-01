@@ -25,18 +25,25 @@ fullFillOf (Order p q) = Fill p q
 invalidPrice :: Order -> Bool
 invalidPrice (Order p _) = p <= 0
 
+double :: Order -> Order
+double (Order p q) = Order p (2*q)
+
+buyOrder :: Order -> Bool
+buyOrder (Order p q) = and[q > 0, validOrder (Order p q)]
+
 runTests :: IO()
 runTests = hspec $ do
   describe "Orderbooks" $ do
     it "rejects orders with zero quantity" $ do
-      placeOrder (Order 23 0) emptyOrderbook `shouldBe` ([], [Rejected])
+      placeOrder (Order 23 0) emptyOrderbook `shouldBe` (([],[]), [Rejected])
     it "rejects orders with invalid price" $ property $ \o ->
-      (invalidPrice o) ==> placeOrder o emptyOrderbook `shouldBe` ([], [Rejected])
+      (invalidPrice o) ==> placeOrder o emptyOrderbook `shouldBe` (([],[]), [Rejected])
     it "always accepts valid orders if it is empty" $ property $ \o ->
       (validOrder o) ==> (snd $ placeOrder o emptyOrderbook) == [Accepted]
     it "consists of the only order in them after a single place" $ property $ \o ->
-      (validOrder o) ==> (fst $ placeOrder o emptyOrderbook) == [o]
+      (buyOrder o) ==> (fst $ placeOrder o emptyOrderbook) == ([o],[])
     it "fills both sides of equal and opposite orders when placed consecutively" $ property $ \o ->
-      (validOrder o) ==> placeOrder o emptyOrderbook >!> (placeOrder $ opposite o) == ([], [fullFillOf $ opposite o, fullFillOf o])
-
+      (buyOrder o) ==> placeOrder o emptyOrderbook >!> (placeOrder $ opposite o) == (([],[]), [fullFillOf $ opposite o, fullFillOf o])
+    it "accepts the same order twice, leaving it on the book" $ property $ \o ->
+      (buyOrder o) ==> placeOrder o emptyOrderbook >!> placeOrder o == (([o,o],[]), [Accepted])
 
