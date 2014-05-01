@@ -1,0 +1,25 @@
+name:                Quicksilver
+version:             0.1.0.0
+synopsis:            A Simple Functional Exchange
+description:         An exchange simulator for arbitrary assets
+homepage:            http:///www.digihippo.net/quicksilver
+license:             MIT
+license-file:        LICENSE
+author:              James Byatt
+maintainer:          grumpyjames@gmail.com
+-- copyright:           
+category:            Financial
+build-type:          Simple
+cabal-version:       >=1.8
+
+Library
+  build-depends:       base ==4.5.*
+  hs-source-dirs:      src
+  Exposed-modules:     Quicksilver.Orderbook
+
+Test-suite Quicksilver/Tests
+  Hs-Source-Dirs:       test .
+  Main-Is:              Tests.hs
+  Type:                 exitcode-stdio-1.0
+  Build-Depends:        base ==4.5.*, QuickCheck ==2.7.*, hspec ==1.9.*, Quicksilver
+  Ghc-Options:          -Wall
