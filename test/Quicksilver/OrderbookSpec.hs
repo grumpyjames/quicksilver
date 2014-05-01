@@ -47,5 +47,8 @@ runTests = hspec $ do
     it "accepts the same order twice, leaving it on the book" $ property $ \o ->
       (buyOrder o) ==> placeOrder o emptyOrderbook >!> placeOrder o == (([o,o],[]), [Accepted])
     it "places opposite orders that don't match on opposite sides of the book" $ property $ \(Order p q) ->
-      and[p > 1, q > 0] ==> placeOrder (Order p q) emptyOrderbook >!> placeOrder (Order (p+1) (-q)) == (([Order p q],[Order (p+1) (-q)]), [Accepted])
+      and[p > 0, q > 0] ==> placeOrder (Order p q) emptyOrderbook >!> placeOrder (Order (p+1) (-q)) == (([Order p q],[Order (p+1) (-q)]), [Accepted])
+    it "matches a buy order with a sell order with a lower price, the aggressing order taking the best price" $ property $ \(Order p q) ->
+      and[p > 1, q > 0] ==> placeOrder (Order p q) emptyOrderbook >!> placeOrder (Order (p-1) (-q)) == (([],[]), [Fill p (-q), Fill p q])
+
 
