@@ -25,11 +25,10 @@ fullFillOf (Order p q) = Fill p q
 invalidPrice :: Order -> Bool
 invalidPrice (Order p _) = p <= 0
 
-double :: Order -> Order
-double (Order p q) = Order p (2*q)
-
-buyOrder :: Order -> Bool
-buyOrder (Order p q) = and[q > 0, validOrder (Order p q)]
+pickSide :: Quantity -> [Order] -> Orderbook
+pickSide q orders
+  | q > 0 = (orders, [])
+  | otherwise = ([], orders)
 
 runTests :: IO()
 runTests = hspec $ do
@@ -40,17 +39,17 @@ runTests = hspec $ do
       (invalidPrice o) ==> placeOrder o emptyOrderbook `shouldBe` (([],[]), [Rejected])
     it "always accepts valid orders if it is empty" $ property $ \o ->
       (validOrder o) ==> (snd $ placeOrder o emptyOrderbook) == [Accepted]
-    it "consists of the only order in them after a single place" $ property $ \o ->
-      (buyOrder o) ==> (fst $ placeOrder o emptyOrderbook) == ([o],[])
-    it "fills both sides of equal and opposite orders when placed consecutively" $ property $ \o ->
-      (buyOrder o) ==> placeOrder o emptyOrderbook >!> (placeOrder $ opposite o) == (([],[]), [fullFillOf $ opposite o, fullFillOf o])
-    it "accepts the same order twice, leaving it on the book" $ property $ \o ->
-      (buyOrder o) ==> placeOrder o emptyOrderbook >!> placeOrder o == (([o,o],[]), [Accepted])
+    it "consists of the only order in them after a single place" $ property $ \o@(Order p q) ->
+      and [p > 0, q /= 0] ==> (fst $ placeOrder o emptyOrderbook) == pickSide q [o]
+    it "fills both sides of equal and opposite orders when placed consecutively" $ property $ \o@(Order p q)  ->
+      and[p > 0, q /= 0] ==> placeOrder o emptyOrderbook >!> (placeOrder $ opposite o) == (([],[]), [fullFillOf $ opposite o, fullFillOf o])
+    it "accepts the same order twice, leaving it on the book" $ property $ \o@(Order _ q) ->
+      (validOrder o) ==> placeOrder o emptyOrderbook >!> placeOrder o == (pickSide q [o,o], [Accepted])
     it "places opposite orders that don't match on opposite sides of the book" $ property $ \(Order p q) ->
       and[p > 0, q > 0] ==> placeOrder (Order p q) emptyOrderbook >!> placeOrder (Order (p+1) (-q)) == (([Order p q],[Order (p+1) (-q)]), [Accepted])
     it "matches a buy order with a sell order with a lower price, the aggressing order taking the best price" $ property $ \(Order p q) ->
       and[p > 1, q > 0] ==> placeOrder (Order p q) emptyOrderbook >!> placeOrder (Order (p-1) (-q)) == (([],[]), [Fill p (-q), Fill p q])
     it "matches only half of a double reversed order, leaving the remainder on the book" $ property $ \(Order p q) ->
-      and[p > 0, q > 0] ==> placeOrder (Order p q) emptyOrderbook >!> placeOrder (Order p ((-2)*q)) == (([], [Order p (-q)]), [Fill p (-q), Fill p q])
+      and[p > 0, q /= 0] ==> placeOrder (Order p q) emptyOrderbook >!> placeOrder (Order p ((-2)*q)) == (pickSide (-q) [Order p (-q)], [Fill p (-q), Fill p q])
 
 
