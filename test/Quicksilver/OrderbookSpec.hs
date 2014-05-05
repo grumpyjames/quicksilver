@@ -57,6 +57,6 @@ runTests = hspec $ do
     it "matches only half of a double reversed order, leaving the remainder on the book" $ property $ \(Order p q) ->
       and[p > 0, q /= 0] ==> placeOrder (Order p q) emptyOrderbook >!> placeOrder (Order p ((-2)*q)) == (pickSide (-q) [Order p (-q)], [Fill p (-q), Fill p q])
     it "has the same representation regardless of the entry order of two orders with different prices" $ property $ \(o1@(Order p _),o2@(Order r _)) ->
-      and[validOrder o1, validOrder o2, p /= r] ==> placeOrders [o1, o2] == placeOrders [o2, o1]
+      p /= r ==> placeOrders [o1, o2] == placeOrders [o2, o1]
 
 

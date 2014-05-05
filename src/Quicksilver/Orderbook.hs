@@ -74,7 +74,7 @@ rebuild Ask a b = (a, b)
 placeOrder :: Order -> Orderbook -> (Orderbook, Events)
 placeOrder o ob 
   | validOrder o = walkBook scanSide accSide o match reassemble
-  | otherwise = (([],[]), [Rejected])                               
+  | otherwise = (ob, [Rejected])                               
   where scanSide = sideToScan orderSide ob
         accSide = sideToAcc orderSide ob
         reassemble = rebuild orderSide
