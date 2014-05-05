@@ -25,6 +25,20 @@ data Side = Bid
           | Ask
           deriving (Show, Eq)
 
+data MatchResult = MatchResult (Maybe Order) (Maybe Order) Events 
+
+class Matchable a where
+  match :: a -> a -> MatchResult
+  
+instance Matchable Order where
+  match = matchOrders 
+  
+matchOrders :: Order -> Order -> MatchResult  
+matchOrders o1@(Order p1 q1) o2@(Order p2 q2)
+  | (signum q1) == (signum q2) = MatchResult (Just o1) (Just o2) []
+  | (abs q1) > (abs q2) = MatchResult (Just (Order p1 (q1+q2)))  Nothing [Fill p1 q2, Fill p1 (-q2)]
+  | otherwise = MatchResult Nothing (Just (Order p2 (q1+q2))) [Fill p1 (-q1), Fill p1 q1]
+
 side :: Order -> Side
 side (Order _ a)
   | a > 0 = Bid
@@ -68,10 +82,26 @@ placeOrder o ob
         orderSide = side o        
         
 walkBook :: [Order] -> [Order] -> Order -> Match -> Reconstitute -> (Orderbook, Events)
-walkBook [] accSide o _ r = (r [] (o:accSide), [Accepted])
+walkBook [] accSide o _ r = (r [] (insertBag o accSide), [Accepted])
 walkBook ((Order p1 q1):[]) accSide (Order p2 q2) m r 
-  | m p2 p1 = (r [] (remainder p2 q1 q2), [Fill p1 (-q1), Fill p1 q1])
+  | m p2 p1 = (remainder r p1 p2 q1 q2, [Fill p1 (-q1), Fill p1 q1])
   | otherwise = (r [Order p1 q1] [Order p2 q2], [Accepted])
-  where remainder p q1 q2 
-          | q1 + q2 == 0 = []
-          | otherwise = [Order p (q1+q2)]
+
+-- avoid bringing in a lib and just implement this for the time being.
+insertBag :: (Ord a) => a -> [a] -> [a]
+insertBag a [] = [a]
+insertBag a (x:xs)
+  | a > x = a:x:xs
+  | otherwise = x:(insertBag a xs)
+
+instance Ord Order where compare = cmpOrder
+                
+cmpOrder (Order p1 q1) (Order p2 q2)
+  | q1 > 0 = compare p1 p2
+  | otherwise = compare (-p1) (-p2)
+
+remainder :: Reconstitute -> Price -> Price -> Quantity -> Quantity -> Orderbook
+remainder r p1 p2 q1 q2 
+  | q1 + q2 == 0 = r [] []
+  | signum (q1 + q2) == signum q1 = r [Order p1 (q1 + q2)] [] 
+  | otherwise = r [] [Order p2 (q1+q2)]
