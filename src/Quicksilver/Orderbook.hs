@@ -34,34 +34,16 @@ side (Order _ a)
 emptyOrderbook :: Orderbook
 emptyOrderbook = ([],[])
 
-opposite :: Side -> Side
-opposite Bid = Ask
-opposite Ask = Bid
-
-matchSide :: Side -> Orderbook -> [Order]
-matchSide Bid (_, a) = a
-matchSide Ask (a, _) = a
-
-passiveSide :: Side -> Orderbook -> [Order]
-passiveSide = matchSide . opposite
-
-matches :: Side -> Match
-matches Bid = matchOrder (>=)
-matches Ask = matchOrder (<=)          
-
-rebuild :: Side -> Reconstitute
-rebuild Bid a b = (b, a)
-rebuild Ask a b = (a, b)
+arrange :: Side -> Orderbook -> (Orderbook, Reconstitute)
+arrange Bid (bids, asks) = ((asks, bids), \a b -> (b, a))
+arrange Ask (bids, asks) = ((bids, asks), \a b -> (a, b))
 
 placeOrder :: Order -> Orderbook -> (Orderbook, Events)
 placeOrder o ob 
-  | validOrder o = walkBook match passive o matchFn reassemble
+  | validOrder o = walkBook matchSide passiveSide o matchFn reassemble
   | otherwise = (ob, [Rejected])                               
-  where match = matchSide orderSide ob
-        passive = passiveSide orderSide ob
-        reassemble = rebuild orderSide
-        matchFn = matches orderSide
-        orderSide = side o        
+  where ((matchSide, passiveSide), reassemble) = arrange (side o) ob
+        matchFn = matcher o
         
 type FoldCtx = ([(Price,Quantity)], Maybe Order, [Order])
 

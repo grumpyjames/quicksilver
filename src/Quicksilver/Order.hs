@@ -3,7 +3,7 @@ module Quicksilver.Order(Order(..),
                          Price,
                          Match,
                          MatchResult(..),
-                         matchOrder,
+                         matcher,
                          remaining,
                          validOrder) where
 
@@ -31,6 +31,12 @@ remaining (Order p q) fillQty
   | otherwise = Nothing
 
 validOrder (Order p q) = and [q /= 0, p > 0]
+
+matcher :: Order -> Match
+matcher (Order p q)
+  | q > 0 = matchOrder (>=)
+  | q < 0 = matchOrder (<=)
+  | otherwise = undefined
 
 matchOrder :: (Int -> Int -> Bool) -> Match
 matchOrder gt o1@(Order p1 q1) o2@(Order p2 q2)
