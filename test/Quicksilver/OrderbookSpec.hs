@@ -1,5 +1,6 @@
 module Quicksilver.OrderbookSpec (runTests,placeOrders) where
 
+import Quicksilver.Order
 import Quicksilver.Orderbook
 
 import Control.Monad
@@ -12,9 +13,6 @@ import Test.Hspec
 
 instance Arbitrary Order where
   arbitrary = liftM2 Order arbitrary arbitrary 
-  
-validOrder :: Order -> Bool
-validOrder (Order p q) = and [q /= 0, p > 0]
 
 opposite :: Order -> Order
 opposite (Order p q) = Order p (-q)

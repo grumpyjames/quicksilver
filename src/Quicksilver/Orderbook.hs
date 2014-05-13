@@ -7,7 +7,10 @@ module Quicksilver.Orderbook (Events,
                               emptyOrderbook,
                               placeOrder) where
 
+import Quicksilver.Order
+
 import Control.Monad
+
 
 type Events = [PlaceResult]
 data PlaceResult = Accepted                   
@@ -15,10 +18,6 @@ data PlaceResult = Accepted
                  | Fill Price Quantity
                  deriving (Show, Eq)
               
-type Price = Int                     
-type Quantity = Int
-data Order = Order Price Quantity
-             deriving (Show, Eq)                     
 type Orderbook = ([Order],[Order])
 
 data Side = Bid 
@@ -26,13 +25,7 @@ data Side = Bid
           deriving (Show, Eq)
                    
 type Reconstitute = [Order] -> [Order] -> Orderbook         
-type Match = Order -> Order -> MatchResult
-
-data MatchResult = FullMatch (Price, Quantity) (Maybe Order) -- the aggressive order fully matches, potentially leaving some remainder of the passive
-                 | PartialMatch (Price, Quantity) (Maybe Order) -- the passive order full matches, potentially leaving some remainder of the aggressive
-                 | NoMatch Order Order -- no match occurs
-
-  
+ 
 side :: Order -> Side
 side (Order _ a)
   | a > 0 = Bid
@@ -53,22 +46,8 @@ passiveSide :: Side -> Orderbook -> [Order]
 passiveSide = matchSide . opposite
 
 matches :: Side -> Match
-matches Bid = m (>=)
-matches Ask = m (<=)
-
-m :: (Int -> Int -> Bool) -> Match
-m gt o1@(Order p1 q1) o2@(Order p2 q2)
-  | and[p1 `gt` p2, abs q2 > abs q1] = FullMatch (p2, q1) (remaining o2 (-q1))
-  | and[p1 `gt` p2, abs q1 >= abs q2] = PartialMatch (p2, (-q2)) (remaining o1 (-q2))
-  | otherwise = NoMatch o1 o2
-  where fillQty = (signum q1) * min (abs q1) (abs q2)                  
-          
-remaining :: Order -> Quantity -> (Maybe Order)
-remaining (Order p q) fillQty
-  | q - fillQty /= 0 = Just $ Order p (q - fillQty)
-  | otherwise = Nothing
-
-validOrder (Order p q) = and [q /= 0, p > 0]
+matches Bid = matchOrder (>=)
+matches Ask = matchOrder (<=)          
 
 rebuild :: Side -> Reconstitute
 rebuild Bid a b = (b, a)
@@ -112,12 +91,6 @@ insertBag a [] = [a]
 insertBag a (x:xs)
   | a > x = a:x:xs
   | otherwise = x:(insertBag a xs)
-
-instance Ord Order where compare = cmpOrder
-                
-cmpOrder (Order p1 q1) (Order p2 q2)
-  | q1 > 0 = compare p1 p2
-  | otherwise = compare (-p1) (-p2)
 
 remainder :: Reconstitute -> Price -> Price -> Quantity -> Quantity -> Orderbook
 remainder r p1 p2 q1 q2 
