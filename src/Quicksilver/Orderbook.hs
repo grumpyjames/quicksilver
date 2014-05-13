@@ -49,10 +49,9 @@ placeOrder o ob
 type FoldCtx = ([(Price,Quantity)], Maybe Order, [Order])
        
 walkBook :: Orderbook -> Order -> Match -> (Orderbook, Events)
-walkBook (scanSide,accSide) o m = ((newBook, insert leftover accSide), Accepted : (f2e fills))
+walkBook (scanSide,accSide) o m = ((newBook, newAccSide), Accepted : (f2e fills))
   where (fills, leftover, newBook) = walkBook' m scanSide o []
-        insert Nothing accside = accside
-        insert (Just o) accside = insertBag o accside
+        newAccSide = maybe accSide (\o -> insertBag o accSide) leftover
 
 f2e :: [(Price,Quantity)] -> Events
 f2e = foldr (\(p,q) ps -> (Fill p q):(Fill p (-q)):ps) []
