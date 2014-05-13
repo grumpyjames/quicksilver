@@ -28,8 +28,9 @@ data Side = Bid
 type Reconstitute = [Order] -> [Order] -> Orderbook         
 type Match = Order -> Order -> MatchResult
 
-data MatchResult = MatchSuccess (Price, Quantity) (Maybe Order) (Maybe Order)
-                 | MatchFail Order Order
+data MatchResult = FullMatch (Price, Quantity) (Maybe Order) -- the aggressive order fully matches, potentially leaving some remainder of the passive
+                 | PartialMatch (Price, Quantity) (Maybe Order) -- the passive order full matches, potentially leaving some remainder of the aggressive
+                 | NoMatch Order Order -- no match occurs
 
   
 side :: Order -> Side
@@ -57,8 +58,9 @@ matches Ask = m (<=)
 
 m :: (Int -> Int -> Bool) -> Match
 m gt o1@(Order p1 q1) o2@(Order p2 q2)
-  | p1 `gt` p2 = MatchSuccess (p2, fillQty) (remaining o1 fillQty) (remaining o2 (-fillQty))
-  | otherwise = MatchFail o1 o2
+  | and[p1 `gt` p2, abs q2 > abs q1] = FullMatch (p2, q1) (remaining o2 (-q1))
+  | and[p1 `gt` p2, abs q1 >= abs q2] = PartialMatch (p2, (-q2)) (remaining o1 (-q2))
+  | otherwise = NoMatch o1 o2
   where fillQty = (signum q1) * min (abs q1) (abs q2)                  
           
 remaining :: Order -> Quantity -> (Maybe Order)
@@ -88,11 +90,11 @@ foldStep :: Match -> Order -> FoldCtx -> FoldCtx
 foldStep m passiveOrder (fills, Nothing, book) = (fills, Nothing, passiveOrder:book)
 foldStep m passiveOrder (fills, Just aggressiveOrder, book) = merge (m aggressiveOrder passiveOrder) fills book
   where merge :: MatchResult -> [(Price,Quantity)] -> [Order] -> FoldCtx
-        merge (MatchFail aggressiveOrder passiveOrder) fills book = (fills, Just aggressiveOrder, passiveOrder:book)
-        merge (MatchSuccess f@(p,quantity) Nothing Nothing) fills book = (f:fills, Nothing, book)
-        merge (MatchSuccess f@(p,quantity) r@(Just _) Nothing) fills book = (f:fills, r, book)
-        merge (MatchSuccess f@(p,quantity) Nothing (Just o)) fills book = (f:fills, Nothing, o:book)
-        merge (MatchSuccess f@(p,quantity) _ _) _ _ = undefined -- FIXME: restrict MatchResult to prevent this
+        merge (NoMatch aggressiveOrder passiveOrder) fills book = (fills, Just aggressiveOrder, passiveOrder:book)
+        merge (FullMatch f@(p,quantity) Nothing) fills book = (f:fills, Nothing, book)
+        merge (FullMatch f@(p,quantity) (Just o)) fills book = (f:fills, Nothing, o:book)
+        merge (PartialMatch f@(p,quantity) Nothing) fills book = (f:fills, Nothing, book)
+        merge (PartialMatch f@(p,quantity) r@(Just _)) fills book = (f:fills, r, book)
         
 walkBook :: [Order] -> [Order] -> Order -> Match -> Reconstitute -> (Orderbook, Events)
 walkBook [] accSide o _ r = (r [] (insertBag o accSide), [Accepted])
