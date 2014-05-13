@@ -17,7 +17,7 @@ instance Arbitrary Order where
 opposite :: Order -> Order
 opposite (Order p q) = Order p (-q)
 
-fullFillOf :: Order -> PlaceResult
+fullFillOf :: Order -> Event
 fullFillOf (Order p q) = Fill p q
 
 invalidPrice :: Order -> Bool

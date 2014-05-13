@@ -1,5 +1,5 @@
-module Quicksilver.Orderbook (Events,
-                              PlaceResult(..),
+module Quicksilver.Orderbook (Event(..),
+                              Events,
                               Price,
                               Quantity,
                               Order(..),
@@ -12,11 +12,11 @@ import Quicksilver.Order
 import Control.Monad
 import Data.Tuple
 
-type Events = [PlaceResult]
-data PlaceResult = Accepted                   
-                 | Rejected
-                 | Fill Price Quantity
-                 deriving (Show, Eq)
+type Events = [Event]
+data Event = Accepted                   
+           | Rejected
+           | Fill Price Quantity
+           deriving (Show, Eq)
               
 type Orderbook = ([Order],[Order])
 
@@ -40,16 +40,16 @@ arrange Ask = id
 
 placeOrder :: Order -> Orderbook -> (Orderbook, Events)
 placeOrder o ob 
-  | validOrder o = walkBook (r ob) o matchFn r
+  | validOrder o = (r newBook, events)
   | otherwise = (ob, [Rejected])                               
   where r = arrange (side o)
         matchFn = matcher o
+        (newBook,events) = walkBook (r ob) o matchFn
         
 type FoldCtx = ([(Price,Quantity)], Maybe Order, [Order])
        
-walkBook :: Orderbook -> Order -> Match -> Reconstitute -> (Orderbook, Events)
-walkBook ([],accSide) o _ r = (r ([],(insertBag o accSide)), [Accepted])
-walkBook (scanSide,accSide) o m r = (r ((reverse reverseBook),(insert leftover accSide)), Accepted : (genFills fills))
+walkBook :: Orderbook -> Order -> Match -> (Orderbook, Events)
+walkBook (scanSide,accSide) o m = ((reverse reverseBook, insert leftover accSide), Accepted : (genFills fills))
   where (fills, leftover, reverseBook) = foldr (foldStep m) ([], Just o, []) scanSide
         insert Nothing accside = accside
         insert (Just o) accside = insertBag o accside
