@@ -10,7 +10,7 @@ module Quicksilver.Orderbook (Events,
 import Quicksilver.Order
 
 import Control.Monad
-
+import Data.Tuple
 
 type Events = [PlaceResult]
 data PlaceResult = Accepted                   
@@ -24,7 +24,7 @@ data Side = Bid
           | Ask
           deriving (Show, Eq)
                    
-type Reconstitute = [Order] -> [Order] -> Orderbook         
+type Reconstitute = Orderbook -> Orderbook         
  
 side :: Order -> Side
 side (Order _ a)
@@ -34,18 +34,29 @@ side (Order _ a)
 emptyOrderbook :: Orderbook
 emptyOrderbook = ([],[])
 
-arrange :: Side -> Orderbook -> (Orderbook, Reconstitute)
-arrange Bid (bids, asks) = ((asks, bids), \a b -> (b, a))
-arrange Ask (bids, asks) = ((bids, asks), \a b -> (a, b))
+arrange :: Side -> Reconstitute
+arrange Bid = swap
+arrange Ask = id
 
 placeOrder :: Order -> Orderbook -> (Orderbook, Events)
 placeOrder o ob 
-  | validOrder o = walkBook matchSide passiveSide o matchFn reassemble
+  | validOrder o = walkBook (r ob) o matchFn r
   | otherwise = (ob, [Rejected])                               
-  where ((matchSide, passiveSide), reassemble) = arrange (side o) ob
+  where r = arrange (side o)
         matchFn = matcher o
         
 type FoldCtx = ([(Price,Quantity)], Maybe Order, [Order])
+       
+walkBook :: Orderbook -> Order -> Match -> Reconstitute -> (Orderbook, Events)
+walkBook ([],accSide) o _ r = (r ([],(insertBag o accSide)), [Accepted])
+walkBook (scanSide,accSide) o m r = (r ((reverse reverseBook),(insert leftover accSide)), Accepted : (genFills fills))
+  where (fills, leftover, reverseBook) = foldr (foldStep m) ([], Just o, []) scanSide
+        insert Nothing accside = accside
+        insert (Just o) accside = insertBag o accside
+        genFills :: [(Price,Quantity)] -> Events
+        genFills ((p,q):xs) = (Fill p q):(Fill p (-q)):genFills(xs)
+        genFills [] = []
+
 
 foldStep :: Match -> Order -> FoldCtx -> FoldCtx
 foldStep m passiveOrder (fills, Nothing, book) = (fills, Nothing, passiveOrder:book)
@@ -56,16 +67,6 @@ foldStep m passiveOrder (fills, Just aggressiveOrder, book) = merge (m aggressiv
         merge (FullMatch f@(p,quantity) (Just o)) fills book = (f:fills, Nothing, o:book)
         merge (PartialMatch f@(p,quantity) Nothing) fills book = (f:fills, Nothing, book)
         merge (PartialMatch f@(p,quantity) r@(Just _)) fills book = (f:fills, r, book)
-        
-walkBook :: [Order] -> [Order] -> Order -> Match -> Reconstitute -> (Orderbook, Events)
-walkBook [] accSide o _ r = (r [] (insertBag o accSide), [Accepted])
-walkBook scanSide accSide o m r = (r (reverse reverseBook) (insert leftover accSide), Accepted : (genFills fills))
-  where (fills, leftover, reverseBook) = foldr (foldStep m) ([], Just o, []) scanSide
-        insert Nothing accside = accside
-        insert (Just o) accside = insertBag o accside
-        genFills :: [(Price,Quantity)] -> Events
-        genFills ((p,q):xs) = (Fill p q):(Fill p (-q)):genFills(xs)
-        genFills [] = []
 
 -- avoid bringing in a lib and just implement this for the time being.
 insertBag :: (Ord a) => a -> [a] -> [a]
@@ -73,9 +74,3 @@ insertBag a [] = [a]
 insertBag a (x:xs)
   | a > x = a:x:xs
   | otherwise = x:(insertBag a xs)
-
-remainder :: Reconstitute -> Price -> Price -> Quantity -> Quantity -> Orderbook
-remainder r p1 p2 q1 q2 
-  | q1 + q2 == 0 = r [] []
-  | signum (q1 + q2) == signum q1 = r [Order p1 (q1 + q2)] [] 
-  | otherwise = r [] [Order p2 (q1+q2)]
