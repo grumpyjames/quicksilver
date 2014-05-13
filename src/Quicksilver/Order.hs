@@ -42,7 +42,5 @@ matchOrder gt o1@(Order p1 q1) o2@(Order p2 q2)
   | and[p1 `gt` p2, abs q2 > abs q1] = FullMatch (p2, q1) (fill o2 (-q1))
   | and[p1 `gt` p2, abs q1 >= abs q2] = PartialMatch (p2, (-q2)) (fill o1 (-q2))
   | otherwise = NoMatch o1 o2
-  where fillQty = (signum q1) * min (abs q1) (abs q2)                  
-
 
 
