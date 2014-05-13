@@ -40,7 +40,7 @@ arrange Ask = id
 
 placeOrder :: Order -> Orderbook -> (Orderbook, Events)
 placeOrder o ob 
-  | validOrder o = (r newBook, events)
+  | validOrder o = (r newBook, Accepted : events)
   | otherwise = (ob, [Rejected])                               
   where r = arrange (side o)
         matchFn = matcher o
@@ -49,7 +49,7 @@ placeOrder o ob
 type FoldCtx = ([(Price,Quantity)], Maybe Order, [Order])
        
 walkBook :: Orderbook -> Order -> Match -> (Orderbook, Events)
-walkBook (scanSide,accSide) o m = ((newBook, newAccSide), Accepted : (f2e fills))
+walkBook (scanSide,accSide) o m = ((newBook, newAccSide), f2e fills)
   where (fills, leftover, newBook) = walkBook' m scanSide o []
         newAccSide = maybe accSide (\o -> insertBag o accSide) leftover
 
