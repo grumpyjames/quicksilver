@@ -57,7 +57,6 @@ walkBook (scanSide,accSide) o m r = (r ((reverse reverseBook),(insert leftover a
         genFills ((p,q):xs) = (Fill p q):(Fill p (-q)):genFills(xs)
         genFills [] = []
 
-
 foldStep :: Match -> Order -> FoldCtx -> FoldCtx
 foldStep m passiveOrder (fills, Nothing, book) = (fills, Nothing, passiveOrder:book)
 foldStep m passiveOrder (fills, Just aggressiveOrder, book) = merge (m aggressiveOrder passiveOrder) fills book
