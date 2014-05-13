@@ -57,4 +57,4 @@ runTests = hspec $ do
     it "has the same representation regardless of the entry order of two orders with different prices" $ property $ \(o1@(Order p _),o2@(Order r _)) ->
       p /= r ==> placeOrders [o1, o2] == placeOrders [o2, o1]
     it "can match two orders on the opposite side" $ property $ \q ->
-      q /= 0 ==> placeOrder (Order 1 ((-3)*q)) (placeOrders [Order 1 q, Order 1 (2*q)]) == (([],[]), [Accepted, Fill 1 ((-2)*q), Fill 1 (2*q), Fill 1 (-q), Fill 1 q])
+      q /= 0 ==> placeOrder (Order 1 ((-3)*q)) (placeOrders [Order 1 q, Order 1 (2*q)]) == (([],[]), [Accepted, Fill 1 (-q), Fill 1 q, Fill 1 ((-2)*q), Fill 1 (2*q)])

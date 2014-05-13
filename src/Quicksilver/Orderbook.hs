@@ -49,23 +49,23 @@ placeOrder o ob
 type FoldCtx = ([(Price,Quantity)], Maybe Order, [Order])
        
 walkBook :: Orderbook -> Order -> Match -> (Orderbook, Events)
-walkBook (scanSide,accSide) o m = ((reverse reverseBook, insert leftover accSide), Accepted : (genFills fills))
-  where (fills, leftover, reverseBook) = foldr (foldStep m) ([], Just o, []) scanSide
+walkBook (scanSide,accSide) o m = ((newBook, insert leftover accSide), Accepted : (genFills fills))
+  where (fills, leftover, newBook) = walkBook' m scanSide o []
         insert Nothing accside = accside
         insert (Just o) accside = insertBag o accside
         genFills :: [(Price,Quantity)] -> Events
         genFills ((p,q):xs) = (Fill p q):(Fill p (-q)):genFills(xs)
         genFills [] = []
-
-foldStep :: Match -> Order -> FoldCtx -> FoldCtx
-foldStep m passiveOrder (fills, Nothing, book) = (fills, Nothing, passiveOrder:book)
-foldStep m passiveOrder (fills, Just aggressiveOrder, book) = merge (m aggressiveOrder passiveOrder) fills book
-  where merge :: MatchResult -> [(Price,Quantity)] -> [Order] -> FoldCtx
-        merge (NoMatch aggressiveOrder passiveOrder) fills book = (fills, Just aggressiveOrder, passiveOrder:book)
-        merge (FullMatch f@(p,quantity) Nothing) fills book = (f:fills, Nothing, book)
-        merge (FullMatch f@(p,quantity) (Just o)) fills book = (f:fills, Nothing, o:book)
-        merge (PartialMatch f@(p,quantity) Nothing) fills book = (f:fills, Nothing, book)
-        merge (PartialMatch f@(p,quantity) r@(Just _)) fills book = (f:fills, r, book)
+        
+walkBook' :: Match -> [Order] -> Order -> [(Price,Quantity)] -> FoldCtx
+walkBook' m [] o fills = (fills, Just o, [])  
+walkBook' m (x:xs) o fills = cin m (m o x) xs fills
+  where cin :: Match -> MatchResult -> [Order] -> [(Price,Quantity)] -> FoldCtx
+        cin m (PartialMatch f@(p,q) (Just o)) os fs = walkBook' m os o (f:fs)
+        cin m (PartialMatch f@(p,q) Nothing) os fs = (f:fs, Nothing, os)
+        cin m (FullMatch f@(p,q) (Just o)) os fs = (f:fs, Nothing, o:os)
+        cin m (FullMatch f@(p,q) Nothing) os fs = (f:fs, Nothing, os)
+        cin m (NoMatch agg pass) os fs = ([], Just agg, pass:os)
 
 -- avoid bringing in a lib and just implement this for the time being.
 insertBag :: (Ord a) => a -> [a] -> [a]
