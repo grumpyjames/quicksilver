@@ -49,23 +49,22 @@ placeOrder o ob
 type FoldCtx = ([(Price,Quantity)], Maybe Order, [Order])
        
 walkBook :: Orderbook -> Order -> Match -> (Orderbook, Events)
-walkBook (scanSide,accSide) o m = ((newBook, insert leftover accSide), Accepted : (genFills fills))
+walkBook (scanSide,accSide) o m = ((newBook, insert leftover accSide), Accepted : (f2e fills))
   where (fills, leftover, newBook) = walkBook' m scanSide o []
         insert Nothing accside = accside
         insert (Just o) accside = insertBag o accside
-        genFills :: [(Price,Quantity)] -> Events
-        genFills ((p,q):xs) = (Fill p q):(Fill p (-q)):genFills(xs)
-        genFills [] = []
+
+f2e :: [(Price,Quantity)] -> Events
+f2e = foldr (\(p,q) ps -> (Fill p q):(Fill p (-q)):ps) []
         
 walkBook' :: Match -> [Order] -> Order -> [(Price,Quantity)] -> FoldCtx
 walkBook' m [] o fills = (fills, Just o, [])  
 walkBook' m (x:xs) o fills = cin m (m o x) xs fills
   where cin :: Match -> MatchResult -> [Order] -> [(Price,Quantity)] -> FoldCtx
-        cin m (PartialMatch f@(p,q) (Just o)) os fs = walkBook' m os o (f:fs)
-        cin m (PartialMatch f@(p,q) Nothing) os fs = (f:fs, Nothing, os)
-        cin m (FullMatch f@(p,q) (Just o)) os fs = (f:fs, Nothing, o:os)
-        cin m (FullMatch f@(p,q) Nothing) os fs = (f:fs, Nothing, os)
-        cin m (NoMatch agg pass) os fs = ([], Just agg, pass:os)
+        cin m (PassiveComplete f aggressive) os fs = walkBook' m os aggressive (f:fs)
+        cin m (AggressiveComplete f passive) os fs = (f:fs, Nothing, passive:os)
+        cin m (BothComplete f) os fs = (f:fs, Nothing, os)
+        cin m (NoMatch agg pass) os fs = (fs, Just agg, pass:os)
 
 -- avoid bringing in a lib and just implement this for the time being.
 insertBag :: (Ord a) => a -> [a] -> [a]
