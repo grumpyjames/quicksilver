@@ -8,7 +8,7 @@ import Control.Monad
 import Test.QuickCheck
 import Test.Hspec
 
-(>!>) :: (Orderbook, Events) -> (Orderbook -> (Orderbook, Events)) -> (Orderbook, Events)
+(>!>) :: (a, b) -> (a -> (a, b)) -> (a, b)
 (>!>) tuple f = f $ fst tuple
 
 instance Arbitrary Order where
