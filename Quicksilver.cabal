@@ -26,5 +26,5 @@ Test-suite Quicksilver/Tests
   Hs-Source-Dirs:       test .
   Main-Is:              Tests.hs
   Type:                 exitcode-stdio-1.0
-  Build-Depends:        base ==4.5.*, QuickCheck ==2.7.*, hspec ==1.9.*, Quicksilver
+  Build-Depends:        base ==4.5.*, QuickCheck ==2.7.*, hspec ==1.9.*, containers == 0.5.*, Quicksilver
   Ghc-Options:          -Wall

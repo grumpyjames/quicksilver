@@ -4,6 +4,7 @@ import Quicksilver.Order
 import Quicksilver.Orderbook
 
 import Control.Monad
+import qualified Data.Set
 
 import Test.QuickCheck
 import Test.Hspec
@@ -36,6 +37,9 @@ placeInstructions :: [Instruction] -> Orderbook
 placeInstructions = foldr step emptyOrderbook
   where step :: Instruction -> Orderbook -> Orderbook
         step o = fst . placeOrder o
+        
+price :: Instruction -> Int
+price (PlaceOrder p _) = p
 
 runTests :: IO()
 runTests = hspec $ do
@@ -62,3 +66,5 @@ runTests = hspec $ do
       p /= r ==> placeInstructions [o1, o2] == placeInstructions [o2, o1]
     it "can match two orders on the opposite side" $ property $ \q ->
       q /= 0 ==> placeOrder (PlaceOrder 1 ((-3)*q)) (placeInstructions [PlaceOrder 1 q, PlaceOrder 1 (2*q)]) == (([],[]), [Accepted, Fill 1 (-q), Fill 1 q, Fill 1 ((-2)*q), Fill 1 (2*q)])
+    it "has the same representation regardless of the entry order of n orders with different prices" $ property $ \os ->
+      Data.Set.size (Data.Set.fromList (map price os)) == length os ==> (placeInstructions os) == (placeInstructions $ reverse os)
