@@ -15,7 +15,12 @@ cabal-version:       >=1.8
 Library
   build-depends:       base ==4.5.*
   hs-source-dirs:      src
-  Exposed-modules:     Quicksilver.Order,Quicksilver.Orderbook
+  Exposed-modules:     Quicksilver.Main,Quicksilver.Order,Quicksilver.Orderbook
+
+Executable qs
+  hs-source-dirs:      src
+  main-is:             Main.hs
+  build-depends:       base ==4.5.*, Quicksilver
 
 Test-suite Quicksilver/Tests
   Hs-Source-Dirs:       test .
