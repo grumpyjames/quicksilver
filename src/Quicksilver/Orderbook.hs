@@ -2,7 +2,7 @@ module Quicksilver.Orderbook (Event(..),
                               Events,
                               Price,
                               Quantity,
-                              Order(..),
+                              Instruction(..),
                               Orderbook,
                               emptyOrderbook,
                               placeOrder) where
@@ -17,7 +17,9 @@ data Event = Accepted
            | Rejected
            | Fill Price Quantity
            deriving (Show, Eq)
-              
+                    
+data Instruction = PlaceOrder Price Quantity
+                 deriving (Show)
 type Orderbook = ([Order],[Order])
 
 data Side = Bid 
@@ -38,13 +40,13 @@ arrange :: Side -> Reconstitute
 arrange Bid = swap
 arrange Ask = id
 
-placeOrder :: Order -> Orderbook -> (Orderbook, Events)
-placeOrder o ob 
-  | validOrder o = (r newBook, Accepted : events)
-  | otherwise = (ob, [Rejected])                               
+placeOrder :: Instruction -> Orderbook -> (Orderbook, Events)
+placeOrder (PlaceOrder p q) ob = maybe (ob, [Rejected]) (\o -> placeOrder' o ob) $ order p q
+
+placeOrder' :: Order -> Orderbook -> (Orderbook, Events)
+placeOrder' o ob = (r newBook, Accepted : events)
   where r = arrange (side o)
-        matchFn = matcher o
-        (newBook,events) = walkBook (r ob) o matchFn
+        (newBook,events) = walkBook (r ob) o $ matcher o
         
 type FoldCtx = ([(Price,Quantity)], Maybe Order, [Order])
        

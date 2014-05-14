@@ -1,19 +1,23 @@
 module Quicksilver.Order(Order(..),
+                         order,
                          Quantity,
                          Price,
                          Match,
                          MatchResult(..),
-                         matcher,
-                         validOrder) where
+                         matcher) where
 
 type Price = Int                     
 type Quantity = Int
-
 data Order = Order Price Quantity
              deriving (Show, Eq)                 
                                             
 instance Ord Order where compare = cmpOrder
                 
+order :: Int -> Int -> Maybe Order
+order p q
+  | and[p > 0, q /= 0] = Just $ Order p q
+  | otherwise = Nothing  
+
 cmpOrder (Order p1 q1) (Order p2 q2)
   | q1 > 0 = compare p1 p2
   | otherwise = compare (-p1) (-p2)
@@ -29,8 +33,6 @@ fill :: Order -> Quantity -> (Maybe Order)
 fill (Order p q) fillQty
   | q - fillQty /= 0 = Just $ Order p (q - fillQty)
   | otherwise = Nothing
-
-validOrder (Order p q) = and [q /= 0, p > 0]
 
 matcher :: Order -> Match
 matcher (Order p q)
